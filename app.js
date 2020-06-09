@@ -3,6 +3,8 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+const session = require('express-session');
+const FileStore = require('session-file-store')(session);
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -33,10 +35,20 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser('12345-67890-09876-54321'));
+// app.use(cookieParser('12345-67890-09876-54321'));
+
+app.use(session({ // configuration
+  name: 'session-id',
+  secret: '12345-67890-09876-54321',
+  saveUninitialized: false, // when new session is created but no updated then it won't get saved
+  resave: false, // session is created and updates and saved, it will continuse recieved. keeping session marked active
+  store: new FileStore() // to user hard-disk
+}));
 
 function auth(req, res, next) { // basic authentication
-  if (!req.signedCookies.user) {
+  console.log(req.session);
+
+  if (!req.session.user) {
     const authHeader = req.headers.authorization;
     if (!authHeader) { // if not
       const err = new Error('You are not authenticated!');
@@ -50,7 +62,7 @@ function auth(req, res, next) { // basic authentication
     const pass = auth[1];
 
     if (user === 'admin' && pass === 'password') {
-      res.cookie('user', 'admin', { signed: true });
+      req.session.user = 'admin';
       return next(); // authorized
     } else {
       const err = new Error('You are not authenticated!');
@@ -59,7 +71,8 @@ function auth(req, res, next) { // basic authentication
       return next(err);
     }
   } else { // if theres sign cookie from incoming value, check if the cookie is the admin
-    if (req.signedCookies.user === 'admin') {
+    if (req.session.user === 'admin') {
+      console.log('req.session:', req.session);
       return next();
     } else {
       const err = new Error('You are not authenticated!');
