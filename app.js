@@ -33,28 +33,39 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+app.use(cookieParser('12345-67890-09876-54321'));
 
 function auth(req, res, next) { // basic authentication
-  console.log(req.headers); // just for checking
-  const authHeader = req.headers.authorization;
-  if (!authHeader) { // if not
-    const err = new Error('You are not authenticated!');
-    res.setHeader('WWW-Authenticate', 'Basic');
-    err.status = 401;
-    return next(err); // send error message back to client
-  }
+  if (!req.signedCookies.user) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) { // if not
+      const err = new Error('You are not authenticated!');
+      res.setHeader('WWW-Authenticate', 'Basic');
+      err.status = 401;
+      return next(err); // send error message back to client
+    }
 
-  const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':'); // Buffer - we don't need to use it or not require it. from - decode username && password
-  const user = auth[0];
-  const pass = auth[1];
-  if (user === 'admin' && pass === 'password') {
-    return next(); // authorized
-  } else {
-    const err = new Error('You are not authenticated!');
-    res.setHeader('WWW-Authenticate', 'Basic');
-    err.status = 401;
-    return next(err);
+    const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':'); // Buffer - we don't need to use it or not require it. from - decode username && password
+    const user = auth[0];
+    const pass = auth[1];
+
+    if (user === 'admin' && pass === 'password') {
+      res.cookie('user', 'admin', { signed: true });
+      return next(); // authorized
+    } else {
+      const err = new Error('You are not authenticated!');
+      res.setHeader('WWW-Authenticate', 'Basic');
+      err.status = 401;
+      return next(err);
+    }
+  } else { // if theres sign cookie from incoming value, check if the cookie is the admin
+    if (req.signedCookies.user === 'admin') {
+      return next();
+    } else {
+      const err = new Error('You are not authenticated!');
+      err.status = 401;
+      return next(err);
+    }
   }
 }
 
