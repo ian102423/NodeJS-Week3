@@ -5,6 +5,8 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const session = require('express-session');
 const FileStore = require('session-file-store')(session);
+const passport = require('passport');
+const authenticate = require('./authenticate');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -45,52 +47,46 @@ app.use(session({ // configuration
   store: new FileStore() // to user hard-disk
 }));
 
+app.use(passport.initialize());
+app.use(passport.session());
+
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
-function auth(req, res, next) { // basic authentication
-  console.log(req.session);
+function auth(req, res, next) {
+  console.log(req.user);
 
-  function auth(req, res, next) {
-    console.log(req.session);
-
-    if (!req.session.user) {
-      const err = new Error('You are not authenticated!');
-      err.status = 401;
-      return next(err);
-    } else {
-      if (req.session.user === 'authenticated') {
-        return next();
-      } else {
-        const err = new Error('You are not authenticated!');
-        err.status = 401;
-        return next(err);
-      }
-    }
+  if (!req.user) {
+    const err = new Error('You are not authenticated!');
+    err.status = 401;
+    return next(err);
+  } else {
+    return next();
   }
+}
 
-  app.use(auth);
+app.use(auth);
 
-  app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public')));
 
-  app.use('/campsites', campsiteRouter);
-  app.use('/promotions', promotionRouter);
-  app.use('/partners', partnerRouter);
+app.use('/campsites', campsiteRouter);
+app.use('/promotions', promotionRouter);
+app.use('/partners', partnerRouter);
 
-  // catch 404 and forward to error handler
-  app.use(function (req, res, next) {
-    next(createError(404));
-  });
+// catch 404 and forward to error handler
+app.use(function (req, res, next) {
+  next(createError(404));
+});
 
-  // error handler
-  app.use(function (err, req, res, next) {
-    // set locals, only providing error in development
-    res.locals.message = err.message;
-    res.locals.error = req.app.get('env') === 'development' ? err : {};
+// error handler
+app.use(function (err, req, res, next) {
+  // set locals, only providing error in development
+  res.locals.message = err.message;
+  res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-    // render the error page
-    res.status(err.status || 500);
-    res.render('error');
-  });
+  // render the error page
+  res.status(err.status || 500);
+  res.render('error');
+});
 
-  module.exports = app;
+module.exports = app;
