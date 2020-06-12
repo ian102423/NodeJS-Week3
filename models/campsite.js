@@ -16,8 +16,8 @@ const commentSchema = new Schema({ // automatically adds create@ operated@
         required: true
     },
     author: {
-        type: String,
-        required: true
+        type: mongoose.Schema.Types.ObjectId, // store reference to a user document through the user doc object ID
+        ref: 'User'
     }
 }, {
     timestamps: true
