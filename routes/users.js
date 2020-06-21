@@ -17,7 +17,7 @@ router.get('/', cors.corsWithOptions, authenticate.verifyUser, authenticate.veri
     .catch(err => next(err));
 });
 
-router.post('/signup', cors.corsWithOptions, (req, res) => {
+router.post('/signup', cors.corsWithOptions, (req, res, next) => {
   User.register(new User({ username: req.body.username }),
     req.body.password, (err, user) => {
       if (err) {
@@ -32,13 +32,13 @@ router.post('/signup', cors.corsWithOptions, (req, res) => {
           user.lastname = req.body.lastname;
         }
         user.save(err => {
-          if (err) { // error
+          if (err) {
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
             res.json({ err: err });
             return;
           }
-          passport.authenticate('local')(req, res, () => {// if not authenticate the newly registered user, and tells back that the authentication was successful
+          passport.authenticate('local')(req, res, () => { // if not authenticate the newly registered user, and tells back that the authentication was successful
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.json({ success: true, status: 'Registration Successful!' });
@@ -48,7 +48,7 @@ router.post('/signup', cors.corsWithOptions, (req, res) => {
     });
 });
 
-router.post('/login', cors.corsWithOptions, passport.authenticate('local'), (req, res) => { // login end point
+router.post('/login', cors.corsWithOptions, passport.authenticate('local'), (req, res, next) => { // login end point
   const token = authenticate.getToken({ _id: req.user._id }); // give token to user
   res.statusCode = 200;
   res.setHeader('Content-Type', 'application/json');
@@ -64,6 +64,15 @@ router.get('/logout', cors.corsWithOptions, (req, res, next) => { // logout
     const err = new Error('You are not logged in!');
     err.status = 403;
     return next(err);
+  }
+});
+
+router.get('/facebook/token', passport.authenticate('facebook-token'), (req, res) => { // facebook
+  if (req.user) {
+    const token = authenticate.getToken({ _id: req.user._id });
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json({ success: true, token: token, status: 'You are successfully logged in!' });
   }
 });
 
